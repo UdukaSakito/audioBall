@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8" />
+  <title>棒</title>
+  <script src="matter.min.js"></script>
+
+  <script>
+    const { Engine, Render, Bodies, Composite, Runner, Body, World } = Matter;
+    window.addEventListener("DOMContentLoaded", function () {
+      matter_init();
+      Matter.Events.on(engine, "afterUpdate", function () {
+        sound();
+        Body.setPosition(ball, { x: clampNumber(ball.position.x, frame + R, size - frame - R), y: clampNumber(ball.position.y, frame + R, size - frame - R) })
+
+      });
+    }); let radix = 1.5, index = 15, size = 640, frame = 5, R = 64;
+    let analyser, freq, min, max, stream;
+    var bar = Array(index);
+    const constraint = Array(index);
+    let ball;
+    var engine;
+    async function matter_init() {
+      engine = Engine.create();
+      var render = Render.create({
+        element: document.body,
+        engine: engine,
+        options: {
+          width: size,
+          height: size,
+          wireframes: false
+        }
+      });
+      for (var i = 0; i < index; i++) {
+        bar[i] = Bodies.rectangle(((i + 1 / 2) * (size - frame * 2)) / index + frame, size * 1.5 + frame, 32, size, {
+          isStatic: true,
+          render: {
+            fillStyle: '#ffffff',
+          }
+        });
+      }
+      var wall = new Array(4);
+      wall[0] = Bodies.rectangle(size / 2, size, size, frame * 2, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//↓
+      wall[1] = Bodies.rectangle(size / 2, 0, size, frame * 2, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//↑
+      wall[2] = Bodies.rectangle(0, size / 2, frame * 2, size, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//←
+      wall[3] = Bodies.rectangle(size, size / 2, frame * 2, size, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//→
+      ball = Bodies.circle(size / 2, 100, R, {
+        friction: 0, frictionAir: 0, restitution: 0.5, render: {
+          fillStyle: '#ffffff',
+        }
+      });
+      //Body.setVelocity(ball, { x: 0, y: -25 });
+      Composite.add(engine.world, wall);
+      Composite.add(engine.world, bar);
+      Composite.add(engine.world, ball);
+      Render.run(render);
+      // create runner
+      var runner = Runner.create();
+
+      // run the engine
+      Runner.run(runner, engine);
+
+      // マイク許可
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true, autoGainControl: true });
+      // AudioContext 作成
+      const audioCtx = new AudioContext();
+      // マイク → AudioNode
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 32768;
+
+      source.connect(analyser);
+
+      freq = new Uint8Array(analyser.frequencyBinCount);//110より小さく880より大きく
+      min = Math.floor(110 / (audioCtx.sampleRate / analyser.fftSize));
+      max = Math.ceil(880 / (audioCtx.sampleRate / analyser.fftSize)) + 1;
+    }
+    let soundLog = Array(index).fill(0);
+    async function sound() {
+      if (!stream) return;
+      analyser.getByteFrequencyData(freq);
+      //Ctx.clearRect(0, 0, Canvas.width, Canvas.height);
+
+      var left = 0;
+      for (var i = 1; i <= index; i++) {
+        var right = Math.ceil((radix ** i) * (max - min + 1) / (radix ** index)) - 1;//1からなので範囲が1小さくなる
+        var num = freq.slice(left + min, right + min);
+        var sum = (num.reduce((currentTotal, num) => currentTotal + num, 0));
+        average = sum / num.length;
+
+        //Ctx.rect((i - 1) * 20, average, 20, 1);
+        //Body.translate(bar[i - 1], { x: 0, y: soundLog[i - 1] - average }, [updateVelocity = false])
+        Body.setPosition(bar[i - 1], { x: bar[i - 1].position.x, y: size * 1.5 + frame - average, }, [updateVelocity = true]);
+        left = right;
+        soundLog[i - 1] = average;
+      }
+
+
+    }
+    function clampNumber(num, a, b) {
+      //if (num < a || num > b) console.log(num);
+      return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+    }
+  </script>
+</head>
+
+</html>
