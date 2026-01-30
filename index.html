@@ -13,17 +13,18 @@
         if (ball.position.x < R || ball.position.x > size - R) { Body.setVelocity(ball, { x: -ball.velocity.x / 2, y: ball.velocity.y }); }
         if (ball.position.y < R || ball.position.y > size - R) { Body.setVelocity(ball, { x: ball.velocity.x, y: -ball.velocity.y / 2 }); }
         Body.setPosition(ball, { x: clampNumber(ball.position.x, R, size - R), y: clampNumber(ball.position.y, R, size - R) });
-        if (distance(ball.position, goal.position) < (R * 1.5)) {//goalの半径はR/4
+        if (distance(ball.position, goal.position) < (R + R / 4)) {//goalの半径はR/4
+          score++; document.getElementById("score").innerText = "score:" + score;
           var posx;
           while (true) {
             posx = Math.random() * (size - R / 2) + R / 4;
-            if (Math.abs(posx - ball.position.x) > R / 2 + R) break;
+            if (Math.abs(posx - ball.position.x) > R / 4 + R) break;
           }
           Body.setPosition(goal, { x: posx, y: (Math.random() * size / 2 + R) });
           Body.setVelocity(ball, { x: 0, y: 0 });
         }
       });
-    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, barWid = 32;
+    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, barWid = 32, score = 0;
     let analyser, freq, min, max, stream;
     var bar = Array(index), barView = Array(index);
     const constraint = Array(index);
@@ -33,7 +34,7 @@
       engine = Engine.create();
       //engine.gravity.scale = 0.0018;
       var render = Render.create({
-        element: document.body,
+        element: document.getElementById("canvas"),
         engine: engine,
         options: {
           width: size,
@@ -121,9 +122,19 @@
   </script>
   <style>
     body {
+      font-size: x-large;
       text-align: center;
     }
+
+    canvas {
+      width: min(100vw, 88vh);
+    }
+    
   </style>
 </head>
+
+<div id="canvas">
+</div>
+<p id="score">score:0</p>
 
 </html>
