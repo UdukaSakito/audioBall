@@ -17,7 +17,7 @@
           score++; document.getElementById("score").innerText = "score:" + score;
           var posx;
           while (true) {
-            posx = Math.random() * (size - R / 2) + goalR;
+            posx = Math.random() * (size - R - goalR) + goalR;
             if (Math.abs(posx - ball.position.x) > goalR + R) break;
           }
           Body.setPosition(goal, { x: posx, y: (Math.random() * size / 2 + R) });
@@ -126,6 +126,10 @@
       text-align: center;
     }
 
+    h2 {
+      margin-top: 0;
+    }
+
     canvas {
       width: min(100%, 88vh);
     }
@@ -134,6 +138,6 @@
 
 <div id="canvas">
 </div>
-<p id="score">score:0</p>
+<h2 id="score">score:0</h2>
 
 </html>
