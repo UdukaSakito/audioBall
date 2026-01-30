@@ -13,18 +13,18 @@
         if (ball.position.x < R || ball.position.x > size - R) { Body.setVelocity(ball, { x: -ball.velocity.x / 2, y: ball.velocity.y }); }
         if (ball.position.y < R || ball.position.y > size - R) { Body.setVelocity(ball, { x: ball.velocity.x, y: -ball.velocity.y / 2 }); }
         Body.setPosition(ball, { x: clampNumber(ball.position.x, R, size - R), y: clampNumber(ball.position.y, R, size - R) });
-        if (distance(ball.position, goal.position) < (R + R / 4)) {//goalの半径はR/4
+        if (distance(ball.position, goal.position) < (R + goalR)) {
           score++; document.getElementById("score").innerText = "score:" + score;
           var posx;
           while (true) {
-            posx = Math.random() * (size - R / 2) + R / 4;
-            if (Math.abs(posx - ball.position.x) > R / 4 + R) break;
+            posx = Math.random() * (size - R / 2) + goalR;
+            if (Math.abs(posx - ball.position.x) > goalR + R) break;
           }
           Body.setPosition(goal, { x: posx, y: (Math.random() * size / 2 + R) });
           Body.setVelocity(ball, { x: 0, y: 0 });
         }
       });
-    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, barWid = 32, score = 0;
+    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, goalR = R / 2, barWid = 32, score = 0;
     let analyser, freq, min, max, stream;
     var bar = Array(index), barView = Array(index);
     const constraint = Array(index);
@@ -47,7 +47,7 @@
           fillStyle: '#ffffff',
         }
       });
-      goal = Bodies.circle(500, 300, R / 4, {
+      goal = Bodies.circle(500, 300, goalR, {
         friction: 0, frictionAir: 0, restitution: 0.5, isStatic: true, render: {
           fillStyle: '#770000', options: {
             wireframes: false
@@ -129,7 +129,6 @@
     canvas {
       width: min(100%, 88vh);
     }
-    
   </style>
 </head>
 
