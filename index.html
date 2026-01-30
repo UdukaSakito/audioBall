@@ -3,26 +3,35 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>棒</title>
   <script src="matter.min.js"></script>
-
   <script>
     const { Engine, Render, Bodies, Composite, Runner, Body, World } = Matter;
     window.addEventListener("DOMContentLoaded", function () {
       matter_init();
       Matter.Events.on(engine, "afterUpdate", function () {
         sound();
-        Body.setPosition(ball, { x: clampNumber(ball.position.x, frame + R, size - frame - R), y: clampNumber(ball.position.y, frame + R, size - frame - R) })
-
+        if (ball.position.x < R || ball.position.x > size - R) { Body.setVelocity(ball, { x: -ball.velocity.x / 2, y: ball.velocity.y }); }
+        if (ball.position.y < R || ball.position.y > size - R) { Body.setVelocity(ball, { x: ball.velocity.x, y: -ball.velocity.y / 2 }); }
+        Body.setPosition(ball, { x: clampNumber(ball.position.x, R, size - R), y: clampNumber(ball.position.y, R, size - R) });
+        if (distance(ball.position, goal.position) < (R * 1.5)) {//goalの半径はR/4
+          var posx;
+          while (true) {
+            posx = Math.random() * (size - R / 2) + R / 4;
+            if (Math.abs(posx - ball.position.x) > R / 2 + R) break;
+          }
+          Body.setPosition(goal, { x: posx, y: (Math.random() * size / 2 + R) });
+          Body.setVelocity(ball, { x: 0, y: 0 });
+        }
       });
-    }); let radix = 1.5, index = 15, size = 640, frame = 5, R = 64;
+    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, barWid = 32;
     let analyser, freq, min, max, stream;
-    var bar = Array(index);
+    var bar = Array(index), barView = Array(index);
     const constraint = Array(index);
-    let ball;
+    let ball, goal;
     var engine;
     async function matter_init() {
       engine = Engine.create();
+      //engine.gravity.scale = 0.0018;
       var render = Render.create({
         element: document.body,
         engine: engine,
@@ -32,28 +41,20 @@
           wireframes: false
         }
       });
-      for (var i = 0; i < index; i++) {
-        bar[i] = Bodies.rectangle(((i + 1 / 2) * (size - frame * 2)) / index + frame, size * 1.5 + frame, 32, size, {
-          isStatic: true,
-          render: {
-            fillStyle: '#ffffff',
-          }
-        });
-      }
-      var wall = new Array(4);
-      wall[0] = Bodies.rectangle(size / 2, size, size, frame * 2, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//↓
-      wall[1] = Bodies.rectangle(size / 2, 0, size, frame * 2, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//↑
-      wall[2] = Bodies.rectangle(0, size / 2, frame * 2, size, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//←
-      wall[3] = Bodies.rectangle(size, size / 2, frame * 2, size, { isStatic: true, restitution: 1, friction: 0, frictionAir: 0, render: { lineWidth: 4 } });//→
-      ball = Bodies.circle(size / 2, 100, R, {
+      ball = Bodies.circle(size / 2, size / 2, R, {
         friction: 0, frictionAir: 0, restitution: 0.5, render: {
           fillStyle: '#ffffff',
         }
       });
-      //Body.setVelocity(ball, { x: 0, y: -25 });
-      Composite.add(engine.world, wall);
-      Composite.add(engine.world, bar);
-      Composite.add(engine.world, ball);
+      goal = Bodies.circle(500, 300, R / 4, {
+        friction: 0, frictionAir: 0, restitution: 0.5, isStatic: true, render: {
+          fillStyle: '#770000', options: {
+            wireframes: false
+          },
+          collisionFilter: -1
+        }
+      });
+      Composite.add(engine.world, [ball, goal]);
       Render.run(render);
       // create runner
       var runner = Runner.create();
@@ -63,6 +64,20 @@
 
       // マイク許可
       stream = await navigator.mediaDevices.getUserMedia({ audio: true, autoGainControl: true });
+      for (var i = 0; i < index; i++) {
+        bar[i] = Bodies.rectangle(i * (size - blank) / index + barWid / 2 + blank, size * 1.5, barWid, size, {
+          isStatic: true,
+          chamfer: { radius: barWid / 2 }
+        });
+        barView[i] = Bodies.rectangle(bar[i].position.x, bar[i].position.y, barWid, size, {
+          isStatic: true,
+          render: {
+            fillStyle: '#ffffff',
+          }, collisionFilter: -1
+        });
+      }
+      Composite.add(engine.world, bar);
+      Composite.add(engine.world, barView);
       // AudioContext 作成
       const audioCtx = new AudioContext();
       // マイク → AudioNode
@@ -76,31 +91,32 @@
       min = Math.floor(110 / (audioCtx.sampleRate / analyser.fftSize));
       max = Math.ceil(880 / (audioCtx.sampleRate / analyser.fftSize)) + 1;
     }
-    let soundLog = Array(index).fill(0);
+    //let tempMax = 0;
+    //let soundLog = Array(index).fill(0);
     async function sound() {
       if (!stream) return;
       analyser.getByteFrequencyData(freq);
-      //Ctx.clearRect(0, 0, Canvas.width, Canvas.height);
-
       var left = 0;
       for (var i = 1; i <= index; i++) {
         var right = Math.ceil((radix ** i) * (max - min + 1) / (radix ** index)) - 1;//1からなので範囲が1小さくなる
         var num = freq.slice(left + min, right + min);
         var sum = (num.reduce((currentTotal, num) => currentTotal + num, 0));
         average = sum / num.length;
-
-        //Ctx.rect((i - 1) * 20, average, 20, 1);
         //Body.translate(bar[i - 1], { x: 0, y: soundLog[i - 1] - average }, [updateVelocity = false])
-        Body.setPosition(bar[i - 1], { x: bar[i - 1].position.x, y: size * 1.5 + frame - average, }, [updateVelocity = true]);
+        Body.setPosition(bar[i - 1], { x: bar[i - 1].position.x, y: size * 1.5 - average }, [updateVelocity = true]);
+        Body.setPosition(barView[i - 1], { x: bar[i - 1].position.x, y: bar[i - 1].position.y });
+
         left = right;
-        soundLog[i - 1] = average;
+        //soundLog[i - 1] = average;
       }
 
 
     }
     function clampNumber(num, a, b) {
-      //if (num < a || num > b) console.log(num);
       return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+    }
+    function distance(pos1, pos2) {
+      return Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2);
     }
   </script>
 </head>
