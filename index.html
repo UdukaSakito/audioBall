@@ -4,12 +4,21 @@
 <head>
   <meta charset="UTF-8" />
   <script src="matter.min.js"></script>
+  <link rel="stylesheet" href="design.css">
+  <canvas id="canvas"></canvas>
+  <div id="UI">
+    <button id="btn" onclick="modeChangeBtn()">スコアアタック</button>
+    <h2 id="score">score:0</h2>
+  </div>
+
   <script>
     const { Engine, Render, Bodies, Composite, Runner, Body, World } = Matter;
     window.addEventListener("DOMContentLoaded", function () {
       matter_init();
       Matter.Events.on(engine, "afterUpdate", function () {
+
         sound();
+        if (mode == "scoreMode") scoreMode();
         if (ball.position.x < R || ball.position.x > size - R) { Body.setVelocity(ball, { x: -ball.velocity.x / 2, y: ball.velocity.y }); }
         if (ball.position.y < R || ball.position.y > size - R) { Body.setVelocity(ball, { x: ball.velocity.x, y: -ball.velocity.y / 2 }); }
         Body.setPosition(ball, { x: clampNumber(ball.position.x, R, size - R), y: clampNumber(ball.position.y, R, size - R) });
@@ -24,21 +33,31 @@
           Body.setVelocity(ball, { x: 0, y: 0 });
         }
       });
-    }); let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, goalR = R / 2, barWid = 32, score = 0;
+    });
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const btn = document.getElementById("btn");
+    canvas.addEventListener("mousedown", (e) => {
+      if (wait && mode == "scoreMode") {
+        Render.run(render);
+        Runner.run(runner, engine);
+        wait = false;
+      }
+    });
+    let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, goalR = R / 2, barWid = 32, score = 0;
     let analyser, freq, min, max, stream;
-    var bar = Array(index), barView = Array(index);
+    let bar = Array(index), barView = Array(index);
     const constraint = Array(index);
-    let ball, goal;
-    var engine;
+    let ball, goal, mode = "normal";
+    let engine, runner, render;
     async function matter_init() {
       engine = Engine.create();
-      //engine.gravity.scale = 0.0018;
-      var render = Render.create({
-        element: document.getElementById("canvas"),
+      render = Render.create({
         engine: engine,
+        canvas: canvas,
         options: {
           width: size,
-          height: size,
+          height: size, id: "can",
           wireframes: false
         }
       });
@@ -58,8 +77,7 @@
       Composite.add(engine.world, [ball, goal]);
       Render.run(render);
       // create runner
-      var runner = Runner.create();
-
+      runner = Runner.create();
       // run the engine
       Runner.run(runner, engine);
 
@@ -92,9 +110,8 @@
       min = Math.floor(110 / (audioCtx.sampleRate / analyser.fftSize));
       max = Math.ceil(880 / (audioCtx.sampleRate / analyser.fftSize)) + 1;
     }
-    //let tempMax = 0;
-    //let soundLog = Array(index).fill(0);
-    async function sound() {
+
+    function sound() {
       if (!stream) return;
       analyser.getByteFrequencyData(freq);
       var left = 0;
@@ -106,12 +123,32 @@
         //Body.translate(bar[i - 1], { x: 0, y: soundLog[i - 1] - average }, [updateVelocity = false])
         Body.setPosition(bar[i - 1], { x: bar[i - 1].position.x, y: size * 1.5 - average }, [updateVelocity = true]);
         Body.setPosition(barView[i - 1], { x: bar[i - 1].position.x, y: bar[i - 1].position.y });
-
         left = right;
-        //soundLog[i - 1] = average;
       }
-
-
+    }
+    let time, remain, text, wait;
+    function scoreMode() {
+      if (new Date().getTime() - time > (30 - remain) * 1000) {
+        remain -= 0.1
+        text = remain.toFixed(1);
+      }
+      if (remain <= 0) {
+        text = "終了"; wait = true; mode = "result"; btn.hidden = false; btn.textContent = "終了";
+        document.getElementById("score").innerText = "←ボタンを押して終了";
+        Runner.stop(runner);
+        Render.stop(render);
+      }
+      ctx.fillStyle = "white";
+      ctx.textAlign = "right";
+      ctx.textBaseline = "top";
+      ctx.fillText(text, size, 0);
+      if (wait) {
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("score:" + score, size / 2, size / 2);
+        ctx.lineWidth = "1px";
+        ctx.strokeText("score:" + score, size / 2, size / 2);
+      }
     }
     function clampNumber(num, a, b) {
       return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
@@ -119,25 +156,36 @@
     function distance(pos1, pos2) {
       return Math.sqrt((pos1.x - pos2.x) ** 2 + (pos1.y - pos2.y) ** 2);
     }
+    function modeChangeBtn() {
+      if (mode == "normal") {
+        Runner.stop(runner);
+        Render.stop(render);
+        ctx.fillStyle = "white";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.font = "32px serif";
+        ctx.lineWidth = "1px";
+        ctx.fillText("画面をタップしてスタート", size / 2, size / 2);
+        ctx.strokeText("画面をタップしてスタート", size / 2, size / 2);
+        mode = "scoreMode";
+        time = new Date().getTime();
+        text = remain = 30.0;
+        Body.setPosition(ball, { x: size / 2, y: size / 2 });
+        Body.setPosition(goal, { x: 500, y: 300 });
+        Body.setVelocity(ball, { x: 0, y: 0 });
+        wait = true;
+        document.getElementById("btn").hidden = true;
+      }
+      else if (mode == "result") {
+        mode = "normal";
+        btn.textContent = "スコアアタック";
+        Render.run(render);
+        Runner.run(runner, engine);
+      }
+      score = 0;
+      document.getElementById("score").innerText = "score:0";
+    }
   </script>
-  <style>
-    body {
-      font-size: x-large;
-      text-align: center;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    canvas {
-      width: min(100%, 88vh);
-    }
-  </style>
 </head>
-
-<div id="canvas">
-</div>
-<h2 id="score">score:0</h2>
 
 </html>
