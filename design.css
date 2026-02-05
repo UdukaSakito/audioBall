@@ -1,0 +1,28 @@
+body {
+      font-size: x-large;
+      text-align: center;
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+
+    canvas {
+      width: min(100%, 88vh);
+    }
+
+    button {
+      float: left;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      left: 0%;
+      height: 100%;
+    }
+
+    #UI {
+      position: relative;
+      width: min(100%, 88vh);
+      margin: 0 auto;
+    }
