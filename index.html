@@ -9,7 +9,11 @@
   <div id="UI">
     <button id="btn" onclick="modeChangeBtn()">スコアアタック</button>
     <h2 id="score">score:0</h2>
-  </div>
+    <div id="view"><label for="skin">スキン変更</label>
+      <input type="checkbox" id="skin">
+    </div>
+  </div><br>
+  色変更(テスト用)<input type="color" id="color" value="#ffffff">
 
   <script>
     const { Engine, Render, Bodies, Composite, Runner, Body, World } = Matter;
@@ -37,13 +41,19 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const btn = document.getElementById("btn");
-    canvas.addEventListener("mousedown", (e) => {
+    canvas.addEventListener("mousedown", () => {
       if (wait && mode == "scoreMode") {
         Render.run(render);
         Runner.run(runner, engine);
         wait = false;
       }
     });
+    var color = document.getElementById("color");
+    color.addEventListener("change", () => {
+      if (!stream) return;
+      for (var k = 0; k < index; k++)barView[k].render.fillStyle = color.value;
+      //Body.render.fillStyle(bar[i], "red");
+    })
     let radix = 1.5, index = 15, size = 640, blank = 10, R = 64, goalR = R / 2, barWid = 32, score = 0;
     let analyser, freq, min, max, stream;
     let bar = Array(index), barView = Array(index);
@@ -58,19 +68,22 @@
         options: {
           width: size,
           height: size, id: "can",
-          wireframes: false
+          wireframes: false,
+          background: "black"
         }
       });
       ball = Bodies.circle(size / 2, size / 2, R, {
         friction: 0, frictionAir: 0, restitution: 0.5, render: {
           fillStyle: '#ffffff',
+          sprite: { texture: "ball.png", xScale: R * 2.0 / 545, yScale: R * 2.0 / 546 }
         }
       });
       goal = Bodies.circle(500, 300, goalR, {
         friction: 0, frictionAir: 0, restitution: 0.5, isStatic: true, render: {
-          fillStyle: '#770000', options: {
+          fillStyle: '#ffffff', options: {
             wireframes: false
           },
+          sprite: { texture: "sports_archery_mato1.png", xScale: goalR * 2.0 / 373, yScale: goalR * 2.0 / 373 },
           collisionFilter: -1
         }
       });
@@ -86,13 +99,15 @@
       for (var i = 0; i < index; i++) {
         bar[i] = Bodies.rectangle(i * (size - blank) / index + barWid / 2 + blank, size * 1.5, barWid, size, {
           isStatic: true,
-          chamfer: { radius: barWid / 2 }
+          chamfer: { radius: barWid / 2 },
+          render: { visible: false }
         });
         barView[i] = Bodies.rectangle(bar[i].position.x, bar[i].position.y, barWid, size, {
           isStatic: true,
           render: {
-            fillStyle: '#ffffff',
-          }, collisionFilter: -1
+            fillStyle: color.value,
+          }, collisionFilter: -1,
+
         });
       }
       Composite.add(engine.world, bar);
@@ -110,11 +125,14 @@
       min = Math.floor(110 / (audioCtx.sampleRate / analyser.fftSize));
       max = Math.ceil(880 / (audioCtx.sampleRate / analyser.fftSize)) + 1;
     }
-
+    let barBlank = 20;
+    let blankHeight = blank / 2;
     function sound() {
       if (!stream) return;
+
       analyser.getByteFrequencyData(freq);
       var left = 0;
+      ctx.fillStyle = "black";
       for (var i = 1; i <= index; i++) {
         var right = Math.ceil((radix ** i) * (max - min + 1) / (radix ** index)) - 1;//1からなので範囲が1小さくなる
         var num = freq.slice(left + min, right + min);
@@ -123,6 +141,10 @@
         //Body.translate(bar[i - 1], { x: 0, y: soundLog[i - 1] - average }, [updateVelocity = false])
         Body.setPosition(bar[i - 1], { x: bar[i - 1].position.x, y: size * 1.5 - average }, [updateVelocity = true]);
         Body.setPosition(barView[i - 1], { x: bar[i - 1].position.x, y: bar[i - 1].position.y });
+        if (document.getElementById("skin").checked) {
+          for (var j = 1; j < average / barBlank; j++)
+            ctx.fillRect(bar[i - 1].position.x - barWid / 2, size - j * barBlank, barWid, blankHeight);
+        }
         left = right;
       }
     }
