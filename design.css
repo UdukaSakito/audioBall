@@ -20,6 +20,15 @@ body {
       left: 0%;
       height: 100%;
     }
+    #view{
+      width: 25%;
+      float:right;
+      position:absolute;
+
+      right:0%;
+      top: 50%;
+      transform: translateY(-50%);
+    }
 
     #UI {
       position: relative;
