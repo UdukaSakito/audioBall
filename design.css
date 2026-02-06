@@ -21,7 +21,7 @@ body {
       height: 100%;
     }
     #view{
-      width: 25%;
+      width: 30%;
       float:right;
       position:absolute;
 
@@ -35,3 +35,4 @@ body {
       width: min(100%, 88vh);
       margin: 0 auto;
     }
+
